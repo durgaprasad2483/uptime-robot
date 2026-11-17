@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HOUR, type Incident, type Monitor, type StatRow } from '../shared/types';
 import { api, AuthError } from './api';
 import { MonitorForm } from './MonitorForm';
-import { ago, Bars, Chart, Dot, pct } from './ui';
+import { ago, Bars, Chart, Dot, pct, ThemeToggle } from './ui';
 
 const hourLabel = (h: number) => new Date(h * HOUR).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -49,6 +49,7 @@ export function App() {
           </span>
         )}
         <div className="ml-auto flex gap-2">
+          <ThemeToggle />
           <button className="btn" onClick={() => act(async () => { const r = await api<{ channels: number; delivered: number; errors: string[] }>('/alerts/test', 'POST'); alert(r.channels ? [`Delivered to ${r.delivered}/${r.channels} channel(s)`, ...r.errors].join('\n\n') : 'No alert channel configured. Set TELEGRAM_* or NTFY_TOPIC secrets.'); })}>Test alert</button>
           <button className="btn btn-primary" onClick={() => setEditing(null)}>+ Add monitor</button>
         </div>
@@ -154,7 +155,7 @@ function Login({ onDone }: { onDone: () => void }) {
       className="mx-auto mt-[20vh] grid w-[min(20rem,calc(100vw-2rem))] gap-3"
       onSubmit={(e) => { e.preventDefault(); api('/login', 'POST', { password }).then(onDone, (err) => setError(err.message)); }}
     >
-      <h1 className="text-xl font-bold tracking-tight">Pulse</h1>
+      <div className="flex items-center justify-between"><h1 className="text-xl font-bold tracking-tight">Pulse</h1><ThemeToggle /></div>
       <input className="input" type="password" autoFocus required autoComplete="current-password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button className="btn btn-primary justify-center">Log in</button>

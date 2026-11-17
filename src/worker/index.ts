@@ -19,7 +19,7 @@ app.post('/logout', logout);
 app.use('*', requireAuth);
 
 const COLS = ['name', 'url', 'method', 'interval_min', 'timeout_sec', 'expected_status', 'keyword',
-  'active_from', 'active_to', 'fail_threshold', 'enabled'] as const satisfies readonly (keyof MonitorInput)[];
+  'active_from', 'active_to', 'fail_threshold', 'enabled', 'notify_every'] as const satisfies readonly (keyof MonitorInput)[];
 const values = (i: MonitorInput) => COLS.map((k) => i[k]);
 const INSERT = `INSERT INTO monitors (${COLS.join()}, created_at) VALUES (${COLS.map(() => '?').join()}, ?) RETURNING *`;
 const UPDATE = `UPDATE monitors SET ${COLS.map((k) => `${k}=?`).join()}, next_check_at=0 WHERE id=? RETURNING *`;

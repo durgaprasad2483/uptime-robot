@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { StatRow, Status } from '../shared/types';
 
 export function ago(ts: number | null, now = Date.now()) {
@@ -33,13 +34,14 @@ export function Bars({ buckets, label }: { buckets: (Pick<StatRow, 'n' | 'up'> |
 }
 
 /** Response-time line chart (avg ms per bucket). */
-export function Chart({ points }: { points: (number | null)[] }) {
-  const vals = points.filter((p): p is number => p != null);
+export function Chart({ points: all }: { points: (number | null)[] }) {
+  const vals = all.filter((p): p is number => p != null);
   if (!vals.length) return <p className="py-8 text-center text-sm text-zinc-500">No successful checks yet</p>;
+  const points = vals.length === 1 ? [vals[0], vals[0]] : all.slice(all.findIndex((p) => p != null));
   const max = Math.max(...vals);
   const W = 600, H = 120;
   const path = points
-    .map((p, i) => (p == null ? null : `${((i / Math.max(points.length - 1, 1)) * W).toFixed(1)},${(H - (p / max) * (H - 8)).toFixed(1)}`))
+    .map((p, i) => (p == null ? null : `${((i / Math.max(points.length - 1, 1)) * W).toFixed(1)},${(H - (p / max) * (H - 22)).toFixed(1)}`))
     .filter(Boolean)
     .join(' ');
   return (
@@ -51,4 +53,24 @@ export function Chart({ points }: { points: (number | null)[] }) {
       <span className="absolute right-0 bottom-0 text-[10px] text-zinc-500">avg {Math.round(vals.reduce((a, b) => a + b) / vals.length)} ms</span>
     </div>
   );
+}
+
+type Theme = 'system' | 'light' | 'dark';
+const NEXT: Record<Theme, Theme> = { system: 'light', light: 'dark', dark: 'system' };
+const ICON: Record<Theme, string> = { system: '🖥️', light: '☀️', dark: '🌙' };
+
+/** Cycles System → Light → Dark; remembered per browser. */
+export function ThemeToggle() {
+  const [theme, setTheme] = useState<Theme>(() => {
+    try { return (localStorage.getItem('theme') as Theme) || 'system'; } catch { return 'system'; }
+  });
+  useEffect(() => {
+    const mq = matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => document.documentElement.classList.toggle('dark', theme === 'dark' || (theme === 'system' && mq.matches));
+    apply();
+    try { theme === 'system' ? localStorage.removeItem('theme') : localStorage.setItem('theme', theme); } catch {}
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, [theme]);
+  return <button type="button" className="btn" title={`Theme: ${theme} (click to change)`} onClick={() => setTheme(NEXT[theme])}>{ICON[theme]}</button>;
 }

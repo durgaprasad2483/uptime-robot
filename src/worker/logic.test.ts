@@ -50,7 +50,8 @@ describe('evaluate', () => {
 describe('parseMonitor', () => {
   const ok = { name: ' API ', url: 'https://x.onrender.com/health', method: 'GET', interval_min: 10, timeout_sec: 90, expected_status: '200-399', fail_threshold: 2 };
   it('accepts and normalizes', () => {
-    expect(parseMonitor(ok)).toMatchObject({ name: 'API', keyword: null, active_from: null, enabled: 1 });
+    expect(parseMonitor(ok)).toMatchObject({ name: 'API', keyword: null, active_from: null, enabled: 1, notify_every: 1 });
+    expect(parseMonitor({ ...ok, notify_every: 0 })).toMatchObject({ notify_every: 0 });
   });
   it('rejects bad input', () => {
     expect(parseMonitor({ ...ok, url: 'ftp://x' })).toBeTypeOf('string');

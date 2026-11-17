@@ -51,6 +51,7 @@ export async function checkAndSave(env: Env, list: Monitor[], now = Date.now()) 
   const hour = Math.floor(now / HOUR);
   const stmts: D1PreparedStatement[] = [];
   const alerts: string[] = [];
+  const report: string[] = [];
 
   list.forEach((m, i) => {
     const r = results[i];
@@ -67,11 +68,21 @@ export async function checkAndSave(env: Env, list: Monitor[], now = Date.now()) 
       alerts.push(e.status === 'down'
         ? `🔴 ${m.name} is DOWN — ${r.error}\n${m.url}`
         : `🟢 ${m.name} is UP (${r.ms} ms)${m.since ? ` after ${mins(now - m.since)}` : ''}`);
+    else if (m.notify_every)
+      report.push(r.ok ? `🟢 ${m.name} · ${r.ms} ms`
+        : e.status === 'down' ? `🔴 ${m.name} · still down · ${r.error}`
+        : `🟠 ${m.name} · ${r.error} · re-checking in 1 min`);
   });
 
   if (stmts.length) await db.batch(stmts);
-  if (alerts.length) await notify(env, alerts.join('\n\n'));
+  await Promise.all([
+    alerts.length && notify(env, alerts.join('\n\n')),
+    report.length && notify(env, `📊 ${stamp(now, env.TIMEZONE)}\n${report.join('\n')}`, true), // silent
+  ]);
 }
+
+const stamp = (now: number, tz: string) =>
+  new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
 
 /** Cron entry: runs every minute. A one-row lock prevents overlapping runs. */
 export async function tick(env: Env, now = Date.now()) {
@@ -96,8 +107,8 @@ export function prune(env: Env, now = Date.now()) {
   ]);
 }
 
-/** Sends to every configured channel; reports per-channel errors (shown by "Test alert"). */
-export async function notify(env: Env, text: string) {
+/** Sends to every configured channel; reports per-channel errors (shown by "Test alert"). `silent` = no sound/buzz. */
+export async function notify(env: Env, text: string, silent = false) {
   const token = env.TELEGRAM_BOT_TOKEN?.trim();
   const chat = env.TELEGRAM_CHAT_ID?.trim();
   const topic = env.NTFY_TOPIC?.trim();
@@ -106,9 +117,9 @@ export async function notify(env: Env, text: string) {
     jobs.push(['Telegram', () => fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ chat_id: chat, text, link_preview_options: { is_disabled: true } }),
+      body: JSON.stringify({ chat_id: chat, text, disable_notification: silent, link_preview_options: { is_disabled: true } }),
     })]);
-  if (topic) jobs.push(['ntfy', () => fetch(`https://ntfy.sh/${topic}`, { method: 'POST', body: text })]);
+  if (topic) jobs.push(['ntfy', () => fetch(`https://ntfy.sh/${topic}`, { method: 'POST', body: text, headers: silent ? { priority: 'min' } : undefined })]);
   const errors: string[] = [];
   await Promise.all(jobs.map(async ([name, send]) => {
     try {

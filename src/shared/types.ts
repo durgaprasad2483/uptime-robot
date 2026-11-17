@@ -13,6 +13,7 @@ export interface MonitorInput {
   active_to: string | null;
   fail_threshold: number;
   enabled: 0 | 1;
+  notify_every: 0 | 1;
 }
 
 export interface Monitor extends MonitorInput {

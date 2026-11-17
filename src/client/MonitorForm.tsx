@@ -11,7 +11,7 @@ const PRESETS = {
 
 const EMPTY: MonitorInput = {
   name: '', url: '', method: 'GET', ...PRESETS['Render backend (sleeps after 15 min)'], expected_status: '200-399',
-  keyword: null, active_from: null, active_to: null, enabled: 1,
+  keyword: null, active_from: null, active_to: null, enabled: 1, notify_every: 1,
 };
 
 function awakeHoursPerMonth(f: MonitorInput) {
@@ -90,7 +90,10 @@ export function MonitorForm({ monitor, onClose }: { monitor: Monitor | null; onC
 
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex items-center justify-between gap-2">
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!f.enabled} onChange={(e) => set('enabled', e.target.checked ? 1 : 0)} />Enabled</label>
+          <div className="grid gap-1 text-sm">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={!!f.enabled} onChange={(e) => set('enabled', e.target.checked ? 1 : 0)} />Enabled</label>
+            <label className="flex items-center gap-2" title="Down/up alerts are always sent, with sound"><input type="checkbox" checked={!!f.notify_every} onChange={(e) => set('notify_every', e.target.checked ? 1 : 0)} />Message me after every check (silent)</label>
+          </div>
           <div className="flex gap-2">
             <button type="button" className="btn" onClick={() => ref.current?.close()}>Cancel</button>
             <button className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>

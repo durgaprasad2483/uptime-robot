@@ -57,5 +57,6 @@ export function parseMonitor(b: any): MonitorInput | string {
     name: b.name.trim(), url: url.href, method: b.method, interval_min: b.interval_min, timeout_sec: b.timeout_sec,
     expected_status: b.expected_status, keyword, active_from, active_to, fail_threshold: b.fail_threshold,
     enabled: b.enabled === 0 || b.enabled === false ? 0 : 1,
+    notify_every: b.notify_every === 0 || b.notify_every === false ? 0 : 1,
   };
 }
