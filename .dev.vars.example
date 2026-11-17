@@ -1,5 +1,5 @@
 # Copy to .dev.vars for local development (never deployed)
-DEV_NO_AUTH=1
+ADMIN_PASSWORD=local-dev-password-123
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 NTFY_TOPIC=

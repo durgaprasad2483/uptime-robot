@@ -8,7 +8,7 @@ It runs entirely on Cloudflare's free plan: **₹0, no card, nothing that sleeps
 |---|---|
 | Cloudflare Worker + Cron Trigger | Runs the checks every minute, serves the API and the dashboard |
 | Cloudflare D1 (SQLite) | Monitors, hourly stats, incidents |
-| Cloudflare Access | Login: only your email can open the dashboard |
+| Password login | One password (Cloudflare secret) → signed HTTP-only cookie, 30 days |
 | Hono | API routes (~100 lines) |
 | React + Vite + Tailwind | Dashboard (73 KB gzipped, no chart/UI libraries) |
 | Telegram / ntfy.sh | Down/up alerts |
@@ -23,10 +23,12 @@ npm run db:remote                     # create tables
 npm run deploy                        # prints https://pulse.<you>.workers.dev
 ```
 
-**1. Lock it down with Cloudflare Access.** Until this is done the API refuses every request, so it's safe by default.
-1. Cloudflare dashboard → Workers & Pages → `pulse` → Settings → Domains & Routes → `workers.dev` → **Enable Cloudflare Access**. Then click **Manage Cloudflare Access** and allow only your email.
-2. Copy your **team name** (Zero Trust → Settings → team domain `<team>.cloudflareaccess.com`) and the app's **Application Audience (AUD) Tag** (Zero Trust → Access → Applications → your app).
-3. Put both into `wrangler.jsonc` → `vars.ACCESS_TEAM` / `vars.ACCESS_AUD`, then run `npm run deploy` again.
+**1. Set your password.** Until this is done, the API refuses every request.
+```bash
+openssl rand -base64 24               # generates a strong password; save it in your password manager
+npx wrangler secret put ADMIN_PASSWORD   # paste it (16+ characters required)
+```
+Open `https://pulse.<you>.workers.dev` and log in. Changing the secret logs out every session.
 
 **2. Alerts.** Set either one or both.
 ```bash
@@ -39,14 +41,12 @@ npx wrangler secret put NTFY_TOPIC
 ```
 Press **Test alert** in the dashboard to confirm.
 
-**3. Watch the watcher (optional, recommended).**
-- Zero Trust → Access → Applications → Add → Self-hosted. Domain `pulse.<you>.workers.dev`, path `api/health`, policy action **Bypass** for Everyone.
-- On [cron-job.org](https://cron-job.org), create a free job for `https://pulse.<you>.workers.dev/api/health` every 5 min with failure notifications on. `/api/health` returns 503 when the cron hasn't run for 5 minutes.
+**3. Watch the watcher (optional, recommended).** `/api/health` is public and returns 503 when the cron hasn't run for 5 minutes. On [cron-job.org](https://cron-job.org), create a free job for `https://pulse.<you>.workers.dev/api/health` every 5 min with failure notifications on.
 
 ## Local development
 
 ```bash
-cp .dev.vars.example .dev.vars        # DEV_NO_AUTH=1 skips Access on localhost only
+cp .dev.vars.example .dev.vars        # local password: local-dev-password-123
 npm run db:local
 npm run dev                           # http://localhost:5173
 curl "localhost:5173/cdn-cgi/handler/scheduled?cron=*+*+*+*+*"   # fire the cron by hand
@@ -83,6 +83,7 @@ migrations/0001_init.sql   schema
 src/shared/types.ts        types shared by worker + dashboard
 src/worker/logic.ts        pure logic: status matching, active hours, state machine, validation (+ tests)
 src/worker/engine.ts       probe, persist, cron tick, prune, notify
+src/worker/auth.ts         password login, signed session cookie
 src/worker/index.ts        Hono API + cron entry
 src/client/                dashboard
 ```

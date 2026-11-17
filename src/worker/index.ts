@@ -1,6 +1,6 @@
-import { cloudflareAccess } from '@hono/cloudflare-access';
-import { Hono, type MiddlewareHandler } from 'hono';
+import { Hono } from 'hono';
 import { HOUR, type Monitor, type MonitorInput } from '../shared/types';
+import { login, logout, requireAuth } from './auth';
 import { checkAndSave, notify, prune, tick } from './engine';
 import { parseMonitor } from './logic';
 
@@ -12,14 +12,11 @@ app.get('/health', async (c) => {
   return c.json({ ok: Date.now() - last < 300_000, last_tick: last }, Date.now() - last < 300_000 ? 200 : 503);
 });
 
-// Everything below requires a valid Cloudflare Access login.
-let access: MiddlewareHandler | undefined;
-app.use('*', async (c, next) => {
-  if (c.env.DEV_NO_AUTH === '1' && ['localhost', '127.0.0.1'].includes(new URL(c.req.url).hostname)) return next();
-  if (!c.env.ACCESS_TEAM) return c.text('Set ACCESS_TEAM (and ACCESS_AUD) in wrangler.jsonc', 500);
-  access ??= cloudflareAccess(c.env.ACCESS_TEAM, c.env.ACCESS_AUD || undefined);
-  return access(c, next);
-});
+app.post('/login', login);
+app.post('/logout', logout);
+
+// Everything below requires a session cookie.
+app.use('*', requireAuth);
 
 const COLS = ['name', 'url', 'method', 'interval_min', 'timeout_sec', 'expected_status', 'keyword',
   'active_from', 'active_to', 'fail_threshold', 'enabled'] as const satisfies readonly (keyof MonitorInput)[];

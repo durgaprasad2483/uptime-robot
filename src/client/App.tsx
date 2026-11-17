@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HOUR, type Incident, type Monitor, type StatRow } from '../shared/types';
-import { api } from './api';
+import { api, AuthError } from './api';
 import { MonitorForm } from './MonitorForm';
 import { ago, Bars, Chart, Dot, pct } from './ui';
 
@@ -11,8 +11,10 @@ export function App() {
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<Monitor | null>();
   const [openId, setOpenId] = useState<number>();
+  const [loggedOut, setLoggedOut] = useState(false);
+  const fail = useCallback((e: Error) => (e instanceof AuthError ? setLoggedOut(true) : setError(e.message)), []);
 
-  const load = useCallback(() => api<typeof data>('/monitors').then((d) => { setData(d); setError(''); }, (e) => setError(e.message)), []);
+  const load = useCallback(() => api<typeof data>('/monitors').then((d) => { setData(d); setError(''); setLoggedOut(false); }, fail), [fail]);
   useEffect(() => {
     load();
     const refresh = () => document.visibilityState === 'visible' && load();
@@ -32,8 +34,10 @@ export function App() {
   const nowHour = Math.floor(Date.now() / HOUR);
 
   async function act(fn: () => Promise<unknown>) {
-    try { await fn(); await load(); } catch (e) { setError((e as Error).message); }
+    try { await fn(); await load(); } catch (e) { fail(e as Error); }
   }
+
+  if (loggedOut) return <Login onDone={load} />;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
@@ -90,7 +94,7 @@ export function App() {
 
       <footer className="mt-6 flex justify-between text-xs text-zinc-500">
         <span>Refreshes every minute</span>
-        <a href="/cdn-cgi/access/logout" className="hover:underline">Log out</a>
+        <button className="hover:underline" onClick={() => api('/logout', 'POST').then(() => { setData(undefined); setLoggedOut(true); })}>Log out</button>
       </footer>
 
       {editing !== undefined && <MonitorForm monitor={editing} onClose={(changed) => { setEditing(undefined); if (changed) { load(); setTimeout(load, 5000); } }} />}
@@ -139,5 +143,21 @@ function Detail({ monitor, onDelete }: { monitor: Monitor; onDelete: () => void 
       </section>
       <button className="btn w-fit text-red-600" onClick={() => confirm(`Delete "${monitor.name}" and its history?`) && onDelete()}>Delete monitor</button>
     </div>
+  );
+}
+
+function Login({ onDone }: { onDone: () => void }) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  return (
+    <form
+      className="mx-auto mt-[20vh] grid w-[min(20rem,calc(100vw-2rem))] gap-3"
+      onSubmit={(e) => { e.preventDefault(); api('/login', 'POST', { password }).then(onDone, (err) => setError(err.message)); }}
+    >
+      <h1 className="text-xl font-bold tracking-tight">Pulse</h1>
+      <input className="input" type="password" autoFocus required autoComplete="current-password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <button className="btn btn-primary justify-center">Log in</button>
+    </form>
   );
 }

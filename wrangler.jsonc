@@ -1,19 +1,36 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "pulse",
-  "main": "src/worker/index.ts",
-  "compatibility_date": "2026-11-01",
-  "assets": { "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
-  // every minute: checks · daily 00:00 UTC: prune old stats
-  "triggers": { "crons": ["* * * * *", "0 0 * * *"] },
-  "d1_databases": [
-    { "binding": "DB", "database_name": "pulse", "database_id": "REPLACE_WITH_ID_FROM_wrangler_d1_create", "migrations_dir": "migrations" }
-  ],
-  "vars": {
-    "TIMEZONE": "Asia/Kolkata",
-    "RETENTION_DAYS": "90",
-    "ACCESS_TEAM": "",
-    "ACCESS_AUD": ""
-  },
-  "observability": { "enabled": true }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "pulse",
+	"main": "src/worker/index.ts",
+	"compatibility_date": "2026-11-01",
+	"workers_dev": true,
+	"preview_urls": false,
+	"assets": {
+		"not_found_handling": "single-page-application",
+		"run_worker_first": [
+			"/api/*"
+		]
+	},
+	// every minute: checks · daily 00:00 UTC: prune old stats
+	"triggers": {
+		"crons": [
+			"* * * * *",
+			"0 0 * * *"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "pulse",
+			"database_id": "97d01a6a-ef63-4656-92c8-00e7d3c87bc1",
+			"migrations_dir": "migrations"
+		}
+	],
+	"vars": {
+		"TIMEZONE": "Asia/Kolkata",
+		"RETENTION_DAYS": "90"
+	},
+	"observability": {
+		"enabled": true
+	}
 }
