@@ -96,16 +96,27 @@ export function prune(env: Env, now = Date.now()) {
   ]);
 }
 
-/** Sends to every configured channel. Returns how many channels were tried. */
+/** Sends to every configured channel; reports per-channel errors (shown by "Test alert"). */
 export async function notify(env: Env, text: string) {
-  const jobs: Promise<Response>[] = [];
-  if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID)
-    jobs.push(fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+  const token = env.TELEGRAM_BOT_TOKEN?.trim();
+  const chat = env.TELEGRAM_CHAT_ID?.trim();
+  const topic = env.NTFY_TOPIC?.trim();
+  const jobs: [string, () => Promise<Response>][] = [];
+  if (token && chat)
+    jobs.push(['Telegram', () => fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text, link_preview_options: { is_disabled: true } }),
-    }));
-  if (env.NTFY_TOPIC) jobs.push(fetch(`https://ntfy.sh/${env.NTFY_TOPIC}`, { method: 'POST', body: text }));
-  const res = await Promise.allSettled(jobs);
-  return { channels: jobs.length, delivered: res.filter((r) => r.status === 'fulfilled' && r.value.ok).length };
+      body: JSON.stringify({ chat_id: chat, text, link_preview_options: { is_disabled: true } }),
+    })]);
+  if (topic) jobs.push(['ntfy', () => fetch(`https://ntfy.sh/${topic}`, { method: 'POST', body: text })]);
+  const errors: string[] = [];
+  await Promise.all(jobs.map(async ([name, send]) => {
+    try {
+      const res = await send();
+      if (!res.ok) errors.push(`${name}: ${(await res.text()).slice(0, 200)}`);
+    } catch (e) {
+      errors.push(`${name}: ${(e as Error).message}`);
+    }
+  }));
+  return { channels: jobs.length, delivered: jobs.length - errors.length, errors };
 }

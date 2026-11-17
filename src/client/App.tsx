@@ -49,7 +49,7 @@ export function App() {
           </span>
         )}
         <div className="ml-auto flex gap-2">
-          <button className="btn" onClick={() => act(async () => { const r = await api<{ channels: number; delivered: number }>('/alerts/test', 'POST'); alert(r.channels ? `Delivered to ${r.delivered}/${r.channels} channel(s)` : 'No alert channel configured. Set TELEGRAM_* or NTFY_TOPIC secrets.'); })}>Test alert</button>
+          <button className="btn" onClick={() => act(async () => { const r = await api<{ channels: number; delivered: number; errors: string[] }>('/alerts/test', 'POST'); alert(r.channels ? [`Delivered to ${r.delivered}/${r.channels} channel(s)`, ...r.errors].join('\n\n') : 'No alert channel configured. Set TELEGRAM_* or NTFY_TOPIC secrets.'); })}>Test alert</button>
           <button className="btn btn-primary" onClick={() => setEditing(null)}>+ Add monitor</button>
         </div>
       </header>
